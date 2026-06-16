@@ -54,6 +54,14 @@ export interface PatrolRecord {
   issues: string;
   photos: string[];
   status: 'normal' | 'issue_found' | 'rectified';
+  remark?: string;
+}
+
+export interface AlertProcessLog {
+  time: string;
+  action: string;
+  operator: string;
+  comment?: string;
 }
 
 export interface Alert {
@@ -65,6 +73,11 @@ export interface Alert {
   time: string;
   status: AlertStatus;
   handler?: string;
+  processTime?: string;
+  resolveTime?: string;
+  processOpinion?: string;
+  result?: string;
+  logs?: AlertProcessLog[];
 }
 
 export interface Camera {
@@ -93,4 +106,13 @@ export interface DrillRecord {
   duration: string;
   result: string;
   evaluation: 'excellent' | 'good' | 'average' | 'poor';
+}
+
+export interface MonitoringRecord {
+  id: string;
+  type: 'rainfall' | 'beach' | 'phreatic' | 'seepage';
+  value: number;
+  pointName: string;
+  timestamp: string;
+  recorder: string;
 }

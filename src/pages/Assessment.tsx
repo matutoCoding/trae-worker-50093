@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { useAppStore } from '@/store/useStore';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { AreaChartComponent } from '@/components/charts/AreaChart';
-import { ShieldCheck, AlertTriangle, Shield, TrendingDown, Clock, CheckCircle, Loader, AlertCircle, FileDown } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Shield, Clock, CheckCircle, Loader, AlertCircle, FileDown, User, MessageSquare, X } from 'lucide-react';
 import type { AlertStatus } from '@/types';
 
 const Assessment: React.FC = () => {
-  const { alerts, reservoir, updateAlertStatus } = useAppStore();
+  const { alerts, reservoir, claimAlert, processAlert, resolveAlert } = useAppStore();
   const [filterLevel, setFilterLevel] = useState<string>('all');
+  const [showOpinionModal, setShowOpinionModal] = useState<string | null>(null);
+  const [showResolveModal, setShowResolveModal] = useState<string | null>(null);
+  const [opinionInput, setOpinionInput] = useState('');
+  const [resultInput, setResultInput] = useState('');
+  const [handlerInput, setHandlerInput] = useState('');
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   const safetyLevelConfig = {
     normal: { label: '正常库', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30' },
@@ -60,6 +66,26 @@ const Assessment: React.FC = () => {
     { name: '6-16', value: 3 },
     { name: '6-17', value: 4 }
   ];
+
+  const handleClaim = (id: string) => {
+    const name = handlerInput.trim() || '管理员';
+    claimAlert(id, name);
+    setHandlerInput('');
+  };
+
+  const handleSubmitOpinion = (id: string) => {
+    if (!opinionInput.trim()) return;
+    processAlert(id, opinionInput.trim());
+    setOpinionInput('');
+    setShowOpinionModal(null);
+  };
+
+  const handleSubmitResolve = (id: string) => {
+    if (!resultInput.trim()) return;
+    resolveAlert(id, resultInput.trim());
+    setResultInput('');
+    setShowResolveModal(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -177,6 +203,7 @@ const Assessment: React.FC = () => {
             {filteredAlerts.map(alert => {
               const statusCfg = statusLabels[alert.status];
               const StatusIcon = statusCfg.icon;
+              const showLog = expandedLog === alert.id;
               return (
                 <div
                   key={alert.id}
@@ -194,37 +221,173 @@ const Assessment: React.FC = () => {
                         <h4 className="text-sm font-medium text-white">{alert.title}</h4>
                       </div>
                       <p className="text-sm text-slate-400 mt-2">{alert.description}</p>
-                      <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                      <div className="flex items-center gap-4 mt-3 text-xs text-slate-500 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Clock size={12} />
-                          {alert.time}
+                          触发时间: {alert.time}
                         </span>
-                        {alert.handler && <span>处理人：{alert.handler}</span>}
+                        {alert.handler && (
+                          <span className="flex items-center gap-1">
+                            <User size={12} />
+                            处理人：{alert.handler}
+                          </span>
+                        )}
+                        {alert.processTime && <span>认领时间: {alert.processTime}</span>}
                       </div>
+
+                      {alert.processOpinion && (
+                        <div className="mt-3 p-3 rounded-lg bg-mine-900/60 border border-mine-800">
+                          <div className="flex items-center gap-1 text-xs text-mine-300 mb-1">
+                            <MessageSquare size={12} />
+                            处理意见
+                          </div>
+                          <div className="text-sm text-slate-300">{alert.processOpinion}</div>
+                        </div>
+                      )}
+
+                      {alert.result && alert.resolveTime && (
+                        <div className="mt-2 p-3 rounded-lg bg-emerald-900/20 border border-emerald-500/30">
+                          <div className="flex items-center gap-1 text-xs text-emerald-400 mb-1">
+                            <CheckCircle size={12} />
+                            处理结果 · {alert.resolveTime}
+                          </div>
+                          <div className="text-sm text-slate-200">{alert.result}</div>
+                        </div>
+                      )}
+
+                      {alert.logs && alert.logs.length > 0 && (
+                        <div className="mt-3">
+                          <button
+                            onClick={() => setExpandedLog(showLog ? null : alert.id)}
+                            className="text-xs text-mine-300 hover:text-mine-200 flex items-center gap-1"
+                          >
+                            {showLog ? '收起' : '查看'}处理日志 ({alert.logs.length})
+                          </button>
+                          {showLog && (
+                            <div className="mt-2 space-y-2 pl-3 border-l-2 border-mine-700">
+                              {alert.logs.map((log, i) => (
+                                <div key={i} className="text-xs">
+                                  <div className="text-slate-400">
+                                    <span className="text-mine-300 font-medium">{log.time}</span>
+                                    {' · '}
+                                    <span className="text-slate-300">{log.operator}</span>
+                                    {' · '}
+                                    <span>{log.action}</span>
+                                  </div>
+                                  {log.comment && <div className="text-slate-500 mt-0.5 ml-2">{log.comment}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <span className={`flex items-center gap-1 text-xs ${statusCfg.color}`}>
-                        <StatusIcon size={14} />
+                        <StatusIcon size={14} className={alert.status === 'processing' ? 'animate-spin' : ''} />
                         {statusCfg.label}
                       </span>
                       {alert.status === 'pending' && (
-                        <button
-                          onClick={() => updateAlertStatus(alert.id, 'processing', '管理员')}
-                          className="px-3 py-1 rounded-md text-xs bg-mine-600 hover:bg-mine-500 text-white transition-all"
-                        >
-                          认领处理
-                        </button>
+                        <div className="flex flex-col items-end gap-2">
+                          <input
+                            type="text"
+                            value={handlerInput}
+                            onChange={e => setHandlerInput(e.target.value)}
+                            placeholder="处理人姓名"
+                            className="px-2 py-1 rounded text-xs bg-mine-900 border border-mine-700 text-white placeholder-slate-600 outline-none focus:border-mine-500 w-28"
+                          />
+                          <button
+                            onClick={() => handleClaim(alert.id)}
+                            className="px-3 py-1 rounded-md text-xs bg-mine-600 hover:bg-mine-500 text-white transition-all"
+                          >
+                            认领处理
+                          </button>
+                        </div>
                       )}
                       {alert.status === 'processing' && (
-                        <button
-                          onClick={() => updateAlertStatus(alert.id, 'resolved')}
-                          className="px-3 py-1 rounded-md text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
-                        >
-                          标记完成
-                        </button>
+                        <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={() => setShowOpinionModal(alert.id)}
+                            className="px-3 py-1 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all"
+                          >
+                            {alert.processOpinion ? '修改处理意见' : '填写处理意见'}
+                          </button>
+                          <button
+                            onClick={() => setShowResolveModal(alert.id)}
+                            className="px-3 py-1 rounded-md text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                          >
+                            标记完成
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
+
+                  {showOpinionModal === alert.id && (
+                    <div className="mt-4 p-4 rounded-xl bg-mine-900 border border-mine-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-medium text-white">填写处理意见</div>
+                        <button onClick={() => { setShowOpinionModal(null); setOpinionInput(''); }} className="text-slate-500 hover:text-slate-300">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <textarea
+                        value={opinionInput || alert.processOpinion || ''}
+                        onChange={e => setOpinionInput(e.target.value)}
+                        placeholder="请输入具体的处理措施和方案..."
+                        rows={3}
+                        className="w-full px-3 py-2 rounded-lg bg-mine-950 border border-mine-800 text-sm text-white placeholder-slate-600 outline-none focus:border-mine-500 resize-none"
+                      />
+                      <div className="flex justify-end gap-2 mt-3">
+                        <button
+                          onClick={() => { setShowOpinionModal(null); setOpinionInput(''); }}
+                          className="px-3 py-1.5 rounded-md text-xs bg-mine-800 hover:bg-mine-700 text-slate-300 transition-all"
+                        >
+                          取消
+                        </button>
+                        <button
+                          onClick={() => handleSubmitOpinion(alert.id)}
+                          disabled={!opinionInput.trim() && !alert.processOpinion}
+                          className="px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all disabled:opacity-50"
+                        >
+                          提交意见
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showResolveModal === alert.id && (
+                    <div className="mt-4 p-4 rounded-xl bg-mine-900 border border-mine-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm font-medium text-white">确认处理完成</div>
+                        <button onClick={() => { setShowResolveModal(null); setResultInput(''); }} className="text-slate-500 hover:text-slate-300">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <textarea
+                        value={resultInput}
+                        onChange={e => setResultInput(e.target.value)}
+                        placeholder="请输入处理结果说明..."
+                        rows={3}
+                        className="w-full px-3 py-2 rounded-lg bg-mine-950 border border-mine-800 text-sm text-white placeholder-slate-600 outline-none focus:border-mine-500 resize-none"
+                      />
+                      <div className="flex justify-end gap-2 mt-3">
+                        <button
+                          onClick={() => { setShowResolveModal(null); setResultInput(''); }}
+                          className="px-3 py-1.5 rounded-md text-xs bg-mine-800 hover:bg-mine-700 text-slate-300 transition-all"
+                        >
+                          取消
+                        </button>
+                        <button
+                          onClick={() => handleSubmitResolve(alert.id)}
+                          disabled={!resultInput.trim()}
+                          className="px-3 py-1.5 rounded-md text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-50"
+                        >
+                          确认完成
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
