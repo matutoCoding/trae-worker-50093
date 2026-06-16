@@ -76,7 +76,7 @@ interface PersistedState {
   monitoringRecords: MonitoringRecord[];
 }
 
-const persisted: PersistedState = loadFromStorage<PersistedState>(STORAGE_KEY, {
+const defaultPersisted: PersistedState = {
   patrolRecords: patrolRecords.map(r => ({ logs: [], ...r } as any)),
   alerts: alerts.map(a => ({ ...a, logs: [] })),
   damDisplacement: damDisplacementPoints,
@@ -87,7 +87,22 @@ const persisted: PersistedState = loadFromStorage<PersistedState>(STORAGE_KEY, {
   beachLength: beachLengthData,
   dailyRainfall: dailyRainfallStats,
   monitoringRecords: []
-});
+};
+const loaded = loadFromStorage<Partial<PersistedState>>(STORAGE_KEY, {});
+const persisted: PersistedState = {
+  ...defaultPersisted,
+  ...loaded,
+  patrolRecords: loaded.patrolRecords ?? defaultPersisted.patrolRecords,
+  alerts: loaded.alerts ?? defaultPersisted.alerts,
+  damDisplacement: loaded.damDisplacement ?? defaultPersisted.damDisplacement,
+  damSettlement: loaded.damSettlement ?? defaultPersisted.damSettlement,
+  phreaticLines: loaded.phreaticLines ?? defaultPersisted.phreaticLines,
+  seepageFlows: loaded.seepageFlows ?? defaultPersisted.seepageFlows,
+  rainfall: loaded.rainfall ?? defaultPersisted.rainfall,
+  beachLength: loaded.beachLength ?? defaultPersisted.beachLength,
+  dailyRainfall: loaded.dailyRainfall ?? defaultPersisted.dailyRainfall,
+  monitoringRecords: loaded.monitoringRecords ?? defaultPersisted.monitoringRecords
+};
 
 interface AppState {
   reservoir: ReservoirInfo;

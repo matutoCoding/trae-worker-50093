@@ -45,10 +45,10 @@ const Assessment: React.FC = () => {
   const dangerCount = alerts.filter(a => a.level === 'danger').length;
 
   const riskMatrix = [
-    { likelihood: '低', consequence: ['低', '中', '高', '很高'], levels: ['可接受', '可接受', '需关注', '需关注'] },
-    { likelihood: '中', consequence: ['可接受', '需关注', '需关注', '不可接受'] },
-    { likelihood: '高', consequence: ['需关注', '需关注', '不可接受', '不可接受'] },
-    { likelihood: '很高', consequence: ['需关注', '不可接受', '不可接受', '不可接受'] }
+    { likelihood: '低', levels: ['可接受', '可接受', '需关注', '需关注'] },
+    { likelihood: '中', levels: ['可接受', '需关注', '需关注', '不可接受'] },
+    { likelihood: '高', levels: ['需关注', '需关注', '不可接受', '不可接受'] },
+    { likelihood: '很高', levels: ['需关注', '不可接受', '不可接受', '不可接受'] }
   ];
 
   const riskColors: Record<string, string> = {

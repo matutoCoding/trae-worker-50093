@@ -25,7 +25,16 @@ const Dashboard: React.FC = () => {
 
   const pendingAlerts = alerts.filter((a) => a.status === 'pending' || a.status === 'processing').length;
 
-  const phreaticData = phreaticLines[0]?.history.map((h) => ({ time: h.time, value: h.value })) || [];
+  const phreaticData = phreaticLines.reduce<any[]>((acc, point) => {
+    point.history.forEach((h, i) => {
+      if (!acc[i]) acc[i] = { time: h.time };
+      acc[i][point.name] = h.value;
+    });
+    return acc;
+  }, []);
+
+  const phreaticMax = Math.max(...phreaticLines.map(p => p.value)).toFixed(1);
+  const warningPhreatic = phreaticLines.find(p => p.status !== 'normal');
 
   const displacementData = damDisplacement.slice(0, 2).reduce<any[]>((acc, point, idx) => {
     point.history.forEach((h, i) => {
@@ -110,8 +119,23 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card-glow">
-          <h3 className="section-title">浸润线水位趋势 (P1)</h3>
-          <AreaChartComponent data={phreaticData} dataKey="value" color="#06b6d4" height={220} xKey="time" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title mb-0">浸润线水位趋势 (全部测点)</h3>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500">最高值:</span>
+              <span className={warningPhreatic ? 'text-amber-400 font-medium' : 'text-cyan-400 font-medium'}>{phreaticMax}m</span>
+              {warningPhreatic && <StatusBadge status={warningPhreatic.status} />}
+            </div>
+          </div>
+          <LineChartComponent
+            data={phreaticData}
+            lines={phreaticLines.map((p, idx) => ({
+              key: p.name,
+              color: ['#06b6d4', '#3b82f6', '#8b5cf6'][idx],
+              name: p.name
+            }))}
+            height={220}
+          />
         </div>
 
         <div className="card-glow">
